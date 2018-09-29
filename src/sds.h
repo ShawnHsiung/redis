@@ -33,14 +33,21 @@
 #ifndef __SDS_H
 #define __SDS_H
 
-#define SDS_MAX_PREALLOC (1024*1024)
+#define SDS_MAX_PREALLOC (1024*1024) //内粗分配1M
 const char *SDS_NOINIT;
 
 #include <sys/types.h>
 #include <stdarg.h>
 #include <stdint.h>
 
+
+/* char别名，sds指向buf[]*/
 typedef char *sds;
+
+
+/* sds header结构的定义， 一共5种；
+ * 告诉编译器取消结构在编译过程中的优化对齐, 照实际占用字节数进行对齐
+ * GCC中的aligned和packed属性介绍: https://blog.shengbin.me/posts/gcc-attribute-aligned-and-packed */
 
 /* Note: sdshdr5 is never used, we just access the flags byte directly.
  * However is here to document the layout of type 5 SDS strings. */
@@ -77,20 +84,28 @@ struct __attribute__ ((__packed__)) sdshdr64 {
 #define SDS_TYPE_8  1
 #define SDS_TYPE_16 2
 #define SDS_TYPE_32 3
-#define SDS_TYPE_64 4
-#define SDS_TYPE_MASK 7
+#define SDS_TYPE_64 4   //flag取值范围
+#define SDS_TYPE_MASK 7 //掩码 111
 #define SDS_TYPE_BITS 3
-#define SDS_HDR_VAR(T,s) struct sdshdr##T *sh = (void*)((s)-(sizeof(struct sdshdr##T)));
-#define SDS_HDR(T,s) ((struct sdshdr##T *)((s)-(sizeof(struct sdshdr##T))))
+
+// ## 宏连接符
+#define SDS_HDR_VAR(T,s) struct sdshdr##T *sh = (void*)((s)-(sizeof(struct sdshdr##T))); sh指向header
+#define SDS_HDR(T,s) ((struct sdshdr##T *)((s)-(sizeof(struct sdshdr##T))))  ///s减去header的偏移量， 取得header pointer
+
 #define SDS_TYPE_5_LEN(f) ((f)>>SDS_TYPE_BITS)
 
+
+/* size_t: 无符号整形
+ * 获取字符串长度 */
 static inline size_t sdslen(const sds s) {
+
+    //紧凑行内存分配， buf前一个字节为标志位flag， 代表sdshdr类型
     unsigned char flags = s[-1];
     switch(flags&SDS_TYPE_MASK) {
         case SDS_TYPE_5:
             return SDS_TYPE_5_LEN(flags);
         case SDS_TYPE_8:
-            return SDS_HDR(8,s)->len;
+            return SDS_HDR(8,s)->len; //通过返回指针获得字符串的长度
         case SDS_TYPE_16:
             return SDS_HDR(16,s)->len;
         case SDS_TYPE_32:
@@ -101,6 +116,7 @@ static inline size_t sdslen(const sds s) {
     return 0;
 }
 
+/* 获取可用空间 */
 static inline size_t sdsavail(const sds s) {
     unsigned char flags = s[-1];
     switch(flags&SDS_TYPE_MASK) {

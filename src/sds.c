@@ -41,6 +41,7 @@
 
 const char *SDS_NOINIT = "SDS_NOINIT";
 
+/* 返回header的size*/
 static inline int sdsHdrSize(char type) {
     switch(type&SDS_TYPE_MASK) {
         case SDS_TYPE_5:
@@ -57,6 +58,7 @@ static inline int sdsHdrSize(char type) {
     return 0;
 }
 
+/* 根据字符串的size判断使用那种header*/
 static inline char sdsReqType(size_t string_size) {
     if (string_size < 1<<5)
         return SDS_TYPE_5;
@@ -96,13 +98,17 @@ sds sdsnewlen(const void *init, size_t initlen) {
     int hdrlen = sdsHdrSize(type);
     unsigned char *fp; /* flags pointer. */
 
-    sh = s_malloc(hdrlen+initlen+1);
+    sh = s_malloc(hdrlen+initlen+1); //分配内存： header + str_size + null-termined
     if (init==SDS_NOINIT)
         init = NULL;
     else if (!init)
         memset(sh, 0, hdrlen+initlen+1);
     if (sh == NULL) return NULL;
+
+    // s指向buf[]
     s = (char*)sh+hdrlen;
+
+    // 设置sdshdr头部信息， 是为了获取字符串长度的时间复杂度变为： O(1)
     fp = ((unsigned char*)s)-1;
     switch(type) {
         case SDS_TYPE_5: {
@@ -139,8 +145,8 @@ sds sdsnewlen(const void *init, size_t initlen) {
         }
     }
     if (initlen && init)
-        memcpy(s, init, initlen);
-    s[initlen] = '\0';
+        memcpy(s, init, initlen); //填充字符串值
+    s[initlen] = '\0'; //结尾符
     return s;
 }
 
@@ -211,6 +217,9 @@ sds sdsMakeRoomFor(sds s, size_t addlen) {
     /* Return ASAP if there is enough space left. */
     if (avail >= addlen) return s;
 
+    // 扩容策略
+    // < SDS_MAX_PREALLO: 2倍
+    // > SDS_MAX_PREALLO: SDS_MAX_PREALLO
     len = sdslen(s);
     sh = (char*)s-sdsHdrSize(oldtype);
     newlen = (len+addlen);
@@ -219,6 +228,7 @@ sds sdsMakeRoomFor(sds s, size_t addlen) {
     else
         newlen += SDS_MAX_PREALLOC;
 
+    //根据长度获取相应header类型
     type = sdsReqType(newlen);
 
     /* Don't use type 5: the user is appending to the string and type 5 is
@@ -226,10 +236,13 @@ sds sdsMakeRoomFor(sds s, size_t addlen) {
      * at every appending operation. */
     if (type == SDS_TYPE_5) type = SDS_TYPE_8;
 
+    //相应header类型的size
     hdrlen = sdsHdrSize(type);
     if (oldtype==type) {
         newsh = s_realloc(sh, hdrlen+newlen+1);
         if (newsh == NULL) return NULL;
+
+        //重新指向buf
         s = (char*)newsh+hdrlen;
     } else {
         /* Since the header size changes, need to move the string forward,
@@ -268,6 +281,8 @@ sds sdsRemoveFreeSpace(sds s) {
      * required, we just realloc(), letting the allocator to do the copy
      * only if really needed. Otherwise if the change is huge, we manually
      * reallocate the string to use the different header type. */
+
+     // TODO: 为什么type > SDS_TYPE_8 ??
     if (oldtype==type || type > SDS_TYPE_8) {
         newsh = s_realloc(sh, oldhdrlen+len+1);
         if (newsh == NULL) return NULL;
