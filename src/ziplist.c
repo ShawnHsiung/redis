@@ -753,10 +753,12 @@ unsigned char *__ziplistInsert(unsigned char *zl, unsigned char *p, unsigned cha
 
     /* Find out prevlen for the entry that is inserted. */
     if (p[0] != ZIP_END) {
+        //插入的位置不在链尾，p的下一个字节储存了要插入位置的前一个元素的长度
         ZIP_DECODE_PREVLEN(p, prevlensize, prevlen);
     } else {
-        unsigned char *ptail = ZIPLIST_ENTRY_TAIL(zl);
+        unsigned char *ptail = ZIPLIST_ENTRY_TAIL(zl); //指向最后一个元素
         if (ptail[0] != ZIP_END) {
+            //获取最后一个元素的长度
             prevlen = zipRawEntryLength(ptail);
         }
     }
@@ -772,6 +774,7 @@ unsigned char *__ziplistInsert(unsigned char *zl, unsigned char *p, unsigned cha
     }
     /* We need space for both the length of the previous entry and
      * the length of the payload. */
+    //计算要插入元素总占用长度 pre + enc + content
     reqlen += zipStorePrevEntryLength(NULL,prevlen);
     reqlen += zipStoreEntryEncoding(NULL,encoding,slen);
 
@@ -955,6 +958,7 @@ unsigned char *ziplistMerge(unsigned char **first, unsigned char **second) {
 
 unsigned char *ziplistPush(unsigned char *zl, unsigned char *s, unsigned int slen, int where) {
     unsigned char *p;
+    //从头部插入或尾部
     p = (where == ZIPLIST_HEAD) ? ZIPLIST_ENTRY_HEAD(zl) : ZIPLIST_ENTRY_END(zl);
     return __ziplistInsert(zl,p,s,slen);
 }

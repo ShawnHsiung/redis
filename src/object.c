@@ -83,11 +83,11 @@ robj *createRawStringObject(const char *ptr, size_t len) {
  * allocated in the same chunk as the object itself. */
 robj *createEmbeddedStringObject(const char *ptr, size_t len) {
     robj *o = zmalloc(sizeof(robj)+sizeof(struct sdshdr8)+len+1);
-    struct sdshdr8 *sh = (void*)(o+1);
+    struct sdshdr8 *sh = (void*)(o+1); // 编译器处理加1 => sizeof(robj), 所以指向的是sdshdr
 
     o->type = OBJ_STRING;
     o->encoding = OBJ_ENCODING_EMBSTR;
-    o->ptr = sh+1;
+    o->ptr = sh+1;  // 编译器处理加1 => sizeof(sdshdr8), 所以指向的是sds-buf
     o->refcount = 1;
     if (server.maxmemory_policy & MAXMEMORY_FLAG_LFU) {
         o->lru = (LFUGetTimeInMinutes()<<8) | LFU_INIT_VAL;
@@ -98,6 +98,7 @@ robj *createEmbeddedStringObject(const char *ptr, size_t len) {
     sh->len = len;
     sh->alloc = len;
     sh->flags = SDS_TYPE_8;
+    //连续存储
     if (ptr == SDS_NOINIT)
         sh->buf[len] = '\0';
     else if (ptr) {
@@ -115,11 +116,15 @@ robj *createEmbeddedStringObject(const char *ptr, size_t len) {
  *
  * The current limit of 44 is chosen so that the biggest string object
  * we allocate as EMBSTR will still fit into the 64 byte arena of jemalloc. */
+
+ //CPU从内存一次加载64字节到L1缓存  redisObject:16字节 sdshdr3字节 换行1字节
 #define OBJ_ENCODING_EMBSTR_SIZE_LIMIT 44
 robj *createStringObject(const char *ptr, size_t len) {
     if (len <= OBJ_ENCODING_EMBSTR_SIZE_LIMIT)
+        //分配一次内存
         return createEmbeddedStringObject(ptr,len);
     else
+        //2次内存分配（sds + robj）
         return createRawStringObject(ptr,len);
 }
 
@@ -142,14 +147,17 @@ robj *createStringObjectFromLongLongWithOptions(long long value, int valueobj) {
     }
 
     if (value >= 0 && value < OBJ_SHARED_INTEGERS && valueobj == 0) {
+        //优先使用shared对象
         incrRefCount(shared.integers[value]);
         o = shared.integers[value];
     } else {
         if (value >= LONG_MIN && value <= LONG_MAX) {
+            //robj内部编码区分: OBJ_ENCODING_INT
             o = createObject(OBJ_STRING, NULL);
             o->encoding = OBJ_ENCODING_INT;
             o->ptr = (void*)((long)value);
         } else {
+            //默认字符编码: OBJ_ENCODING_RAW
             o = createObject(OBJ_STRING,sdsfromlonglong(value));
         }
     }

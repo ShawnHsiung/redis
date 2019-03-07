@@ -60,7 +60,7 @@
  * prevented: a hash table is still allowed to grow if the ratio between
  * the number of elements and the buckets > dict_force_resize_ratio. */
 static int dict_can_resize = 1;
-static unsigned int dict_force_resize_ratio = 5;
+static unsigned int dict_force_resize_ratio = 5; //当比例 the number of elements/buckets >5 , 强制resize
 
 /* -------------------------- private prototypes ---------------------------- */
 
@@ -71,12 +71,15 @@ static int _dictInit(dict *ht, dictType *type, void *privDataPtr);
 
 /* -------------------------- hash functions -------------------------------- */
 
+//哈希种子
 static uint8_t dict_hash_function_seed[16];
 
+//设置seed
 void dictSetHashFunctionSeed(uint8_t *seed) {
     memcpy(dict_hash_function_seed,seed,sizeof(dict_hash_function_seed));
 }
 
+//获取seed
 uint8_t *dictGetHashFunctionSeed(void) {
     return dict_hash_function_seed;
 }
@@ -143,6 +146,7 @@ int dictResize(dict *d)
     return dictExpand(d, minimal);
 }
 
+//哈希表扩容|创建
 /* Expand or create the hash table */
 int dictExpand(dict *d, unsigned long size)
 {
@@ -163,14 +167,16 @@ int dictExpand(dict *d, unsigned long size)
     n.table = zcalloc(realsize*sizeof(dictEntry*));
     n.used = 0;
 
-    /* Is this the first initialization? If so it's not really a rehashing
+    /* 创建哈希表
+     * Is this the first initialization? If so it's not really a rehashing
      * we just set the first hash table so that it can accept keys. */
     if (d->ht[0].table == NULL) {
         d->ht[0] = n;
         return DICT_OK;
     }
 
-    /* Prepare a second hash table for incremental rehashing */
+    /* 用于扩容时渐进式rehash
+     * Prepare a second hash table for incremental rehashing */
     d->ht[1] = n;
     d->rehashidx = 0;
     return DICT_OK;
@@ -186,7 +192,7 @@ int dictExpand(dict *d, unsigned long size)
  * will visit at max N*10 empty buckets in total, otherwise the amount of
  * work it does would be unbound and the function may block for a long time. */
 int dictRehash(dict *d, int n) {
-    int empty_visits = n*10; /* Max number of empty buckets to visit. */
+    int empty_visits = n*10; /* Max number of empty buckets to visit. 一次rehash最多rehash 10*n个空桶，否则可能造成阻塞*/
     if (!dictIsRehashing(d)) return 0;
 
     while(n-- && d->ht[0].used != 0) {
@@ -393,7 +399,7 @@ static dictEntry *dictGenericDelete(dict *d, const void *key, int nofree) {
             prevHe = he;
             he = he->next;
         }
-        if (!dictIsRehashing(d)) break;
+        if (!dictIsRehashing(d)) break;  //根据rehashing状态, 是否检查ht[1]
     }
     return NULL; /* not found */
 }

@@ -179,6 +179,8 @@ void listDelNode(list *list, listNode *node)
     list->len--;
 }
 
+
+// 获取list某个方向上的迭代器
 /* Returns a list iterator 'iter'. After the initialization every
  * call to listNext() will return the next element of the list.
  *
@@ -201,6 +203,7 @@ void listReleaseIterator(listIter *iter) {
     zfree(iter);
 }
 
+// 改变迭代器的方向
 /* Create an iterator in the list private iterator structure */
 void listRewind(list *list, listIter *li) {
     li->next = list->head;

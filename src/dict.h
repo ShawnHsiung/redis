@@ -44,6 +44,8 @@
 /* Unused arguments generate annoying warnings... */
 #define DICT_NOTUSED(V) ((void) V)
 
+
+//字典实体
 typedef struct dictEntry {
     void *key;
     union {
@@ -52,32 +54,34 @@ typedef struct dictEntry {
         int64_t s64;
         double d;
     } v;
+    //指向下一个实体的指针
     struct dictEntry *next;
 } dictEntry;
 
+//字典类型
 typedef struct dictType {
-    uint64_t (*hashFunction)(const void *key);
-    void *(*keyDup)(void *privdata, const void *key);
+    uint64_t (*hashFunction)(const void *key);            //hash函数
+    void *(*keyDup)(void *privdata, const void *key);     //key复制
     void *(*valDup)(void *privdata, const void *obj);
     int (*keyCompare)(void *privdata, const void *key1, const void *key2);
-    void (*keyDestructor)(void *privdata, void *key);
+    void (*keyDestructor)(void *privdata, void *key);     //key释放
     void (*valDestructor)(void *privdata, void *obj);
 } dictType;
 
 /* This is our hash table structure. Every dictionary has two of this as we
  * implement incremental rehashing, for the old to the new table. */
 typedef struct dictht {
-    dictEntry **table;
-    unsigned long size;
-    unsigned long sizemask;
-    unsigned long used;
+    dictEntry **table;       //数组
+    unsigned long size;      //数组长度
+    unsigned long sizemask;  //掩码
+    unsigned long used;      //数组已使用长度
 } dictht;
 
 typedef struct dict {
-    dictType *type;
-    void *privdata;
-    dictht ht[2];
-    long rehashidx; /* rehashing not in progress if rehashidx == -1 */
+    dictType *type;   //字典类型，指定特定的hash函数
+    void *privdata;   //私有数据，TODO: 存储什么呢？
+    dictht ht[2];     //hash表， TODO: 为什么长度为2？， 答案是为了增量rehash
+    long rehashidx; /* -1标示不在rehash过程中， rehashing not in progress if rehashidx == -1 */
     unsigned long iterators; /* number of iterators currently running */
 } dict;
 
@@ -86,10 +90,10 @@ typedef struct dict {
  * iterating. Otherwise it is a non safe iterator, and only dictNext()
  * should be called while iterating. */
 typedef struct dictIterator {
-    dict *d;
-    long index;
-    int table, safe;
-    dictEntry *entry, *nextEntry;
+    dict *d;           //被迭代的字典
+    long index;        //当前迭代指向哈希表的位置
+    int table, safe;   //table: 当前被迭代的哈希表， safe: 是否安全
+    dictEntry *entry, *nextEntry; //TODO: 为什么需要nextEntry
     /* unsafe iterator fingerprint for misuse detection. */
     long long fingerprint;
 } dictIterator;

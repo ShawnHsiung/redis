@@ -1687,8 +1687,9 @@ void initServerConfig(void) {
     /* Command table -- we initiialize it here as it is part of the
      * initial configuration, since command names may be changed via
      * redis.conf using the rename-command directive. */
-    server.commands = dictCreate(&commandTableDictType,NULL);
+    server.commands = dictCreate(&commandTableDictType,NULL); //用于存储Redis命令
     server.orig_commands = dictCreate(&commandTableDictType,NULL);
+    //把redis命令字符串放入server.commands
     populateCommandTable();
     server.delCommand = lookupCommandByCString("del");
     server.multiCommand = lookupCommandByCString("multi");
@@ -2019,10 +2020,10 @@ void initServer(void) {
     server.hz = server.config_hz;
     server.pid = getpid();
     server.current_client = NULL;
-    server.clients = listCreate();
+    server.clients = listCreate();  //客户端列表
     server.clients_index = raxNew();
-    server.clients_to_close = listCreate();
-    server.slaves = listCreate();
+    server.clients_to_close = listCreate(); //待断开的客户端列表
+    server.slaves = listCreate(); //从库列表
     server.monitors = listCreate();
     server.clients_pending_write = listCreate();
     server.slaveseldb = -1; /* Force to emit the first SELECT command. */
@@ -2042,7 +2043,7 @@ void initServer(void) {
             strerror(errno));
         exit(1);
     }
-    server.db = zmalloc(sizeof(redisDb)*server.dbnum);
+    server.db = zmalloc(sizeof(redisDb)*server.dbnum); //分配DB, 默认配置16个
 
     /* Open the TCP listening socket for the user commands. */
     if (server.port != 0 &&
@@ -2069,8 +2070,8 @@ void initServer(void) {
 
     /* Create the Redis databases, and initialize other internal state. */
     for (j = 0; j < server.dbnum; j++) {
-        server.db[j].dict = dictCreate(&dbDictType,NULL);
-        server.db[j].expires = dictCreate(&keyptrDictType,NULL);
+        server.db[j].dict = dictCreate(&dbDictType,NULL);  // key -> val
+        server.db[j].expires = dictCreate(&keyptrDictType,NULL); // key -> expire
         server.db[j].blocking_keys = dictCreate(&keylistDictType,NULL);
         server.db[j].ready_keys = dictCreate(&objectKeyPointerValueDictType,NULL);
         server.db[j].watched_keys = dictCreate(&keylistDictType,NULL);

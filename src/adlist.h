@@ -41,15 +41,15 @@ typedef struct listNode {
 
 typedef struct listIter {
     listNode *next;
-    int direction;
+    int direction; // 迭代方向
 } listIter;
 
 typedef struct list {
     listNode *head;
     listNode *tail;
-    void *(*dup)(void *ptr);
-    void (*free)(void *ptr);
-    int (*match)(void *ptr, void *key);
+    void *(*dup)(void *ptr); //节点值复制
+    void (*free)(void *ptr); //节点值释放
+    int (*match)(void *ptr, void *key);  //节点值对比
     unsigned long len;
 } list;
 
